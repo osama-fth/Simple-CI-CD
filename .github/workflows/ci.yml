@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  lint:
+  ci:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -43,11 +43,20 @@ jobs:
       - name: Run ESLint
         run: npm run lint:fix
 
-      - name: Run tests
+      - name: Build Docker image
+        run: docker build -t simple-ci-cd:ci .
+
+      - name: Init database schema
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -d mydb -f ../db-init/init.sql
+
+      - name: Run tests 
         env:
-          POSTGRES_HOST: localhost
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: mydb
-          POSTGRES_PORT: 5432
+            POSTGRES_HOST: localhost
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: mydb
+            POSTGRES_PORT: 5432
         run: npm test
