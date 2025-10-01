@@ -19,9 +19,9 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U postgres -d mydb" \
-          --health-interval=5s \
-          --health-timeout=5s \
+          --health-cmd="pg_isready -U postgres -d mydb"
+          --health-interval=5s
+          --health-timeout=5s
           --health-retries=10
     defaults:
       run:
@@ -52,11 +52,11 @@ jobs:
           sudo apt-get install -y postgresql-client
           PGPASSWORD=postgres psql -h localhost -U postgres -d mydb -f ../db-init/init.sql
 
-      - name: Run tests 
+      - name: Run tests
         env:
-            POSTGRES_HOST: localhost
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: mydb
-            POSTGRES_PORT: 5432
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mydb
+          POSTGRES_PORT: 5432
         run: npm test
