@@ -22,6 +22,20 @@ services:
       - "3000:3000"
     depends_on:
       - db
+    command: npm run dev           
+    develop:
+      watch:
+        - action: sync             
+          path: ./app
+          target: /app
+          ignore:
+            - node_modules/
+            - test/
+            - "*.log"
+        - action: rebuild          
+          path: ./app/package.json
+        - action: rebuild
+          path: ./app/package-lock.json
 
 volumes:
   db-data:

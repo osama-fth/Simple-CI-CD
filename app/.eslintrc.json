@@ -9,9 +9,17 @@
     "ecmaVersion": 2022
   },
   "rules": {
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "next" }],
-    "no-console": "off",
-    "semi": ["error", "always"],
-    "quotes": ["warn", "single", { "avoidEscape": true }]
+    "semi": ["error", "always"],                      
+    "quotes": ["warn", "single", { "avoidEscape": true }],  
+    "indent": ["warn", 2, { "SwitchCase": 1 }],        
+    "object-curly-spacing": ["warn", "always"],       
+    "array-bracket-spacing": ["warn", "never"],       
+    "comma-dangle": ["warn", "always-multiline"],     
+    "key-spacing": ["warn", { "beforeColon": false, "afterColon": true }],  
+    "space-before-blocks": ["warn", "always"],        
+    "keyword-spacing": ["warn", { "before": true, "after": true }],  
+    "space-infix-ops": "warn",                        
+    "arrow-spacing": ["warn", { "before": true, "after": true }],  
+    "no-multi-spaces": "warn"
   }
 }

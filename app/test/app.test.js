@@ -22,7 +22,7 @@ async function run() {
             server.close(() => process.exit(1));
           }
         })();
-      }
+      },
     );
     req.on('error', (err) => {
       console.error('Errore richiesta:', err.message);
