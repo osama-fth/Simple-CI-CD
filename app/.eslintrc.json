@@ -1,0 +1,17 @@
+{
+  "env": {
+    "commonjs": true,
+    "es2022": true,
+    "node": true
+  },
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "ecmaVersion": 2022
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "next" }],
+    "no-console": "off",
+    "semi": ["error", "always"],
+    "quotes": ["warn", "single", { "avoidEscape": true }]
+  }
+}

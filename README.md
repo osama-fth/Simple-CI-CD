@@ -26,6 +26,12 @@ docker --version
 
 ## 2. Avvio dei container
 
+Prima copia il file di esempio delle variabili ambiente se vuoi personalizzare:
+```bash
+cp .env.example .env
+
+```
+
 Esegui dalla root del progetto (`docker-compose.yml` presente):
 
 Costruzione e avvio (foreground):
