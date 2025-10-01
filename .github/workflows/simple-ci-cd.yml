@@ -1,4 +1,4 @@
-name: CI
+name: SIMPLE-CI-CD
 
 on:
   push:
@@ -6,9 +6,31 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ci:
+  lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install
+        run: npm install
+      - name: Lint
+        run: npm run lint:fix
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
     services:
       postgres:
         image: postgres:15-alpine
@@ -27,29 +49,20 @@ jobs:
       run:
         working-directory: app
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: app/package-lock.json
-
-      - name: Install dependencies
+      - name: Install
         run: npm install
-
-      - name: Lint
-        run: npm run lint:fix
-
-      - name: Init database schema
+      - name: Init DB schema
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
           PGPASSWORD=postgres psql -h localhost -U postgres -d mydb -f ../db-init/init.sql
-
-      - name: Test (root + DB)
+      - name: Test
         env:
           POSTGRES_HOST: localhost
           POSTGRES_USER: postgres

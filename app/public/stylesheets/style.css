@@ -161,6 +161,15 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.collapse {
+  transition: all 0.3s ease;
+}
+
+.btn:hover i {
+  transform: scale(1.1);
+  transition: transform 0.15s ease;
+}
+
 @media (max-width: 768px) {
   .table-modern thead {
     font-size: .65rem;

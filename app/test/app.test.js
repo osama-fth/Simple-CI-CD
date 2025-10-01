@@ -1,4 +1,3 @@
-// Test: 200 su / + tabella users accessibile
 const http = require('http');
 const assert = require('assert');
 const pool = require('../db');

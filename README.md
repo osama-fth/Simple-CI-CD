@@ -1,4 +1,3 @@
-
 # Simple CI/CD
 
 Repository di esempio per introdurre gradualmente pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una piccola applicazione Node.js + PostgreSQL.
@@ -73,28 +72,24 @@ npm run lint:fix   # lint + fix
 
 ## 6. Pipeline CI (GitHub Actions)
 
-Workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-Fasi:
-1. Checkout
-2. Setup Node (cache npm)
-3. Install dipendenze
-4. Lint (auto-fix)
-5. Provision DB Postgres come service
-6. Inizializza schema (`psql -f ../db-init/init.sql`)
-7. Esegue test (env override per usare `localhost`)
+File: [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
-## 11. Sicurezza / Qualità (roadmap)
+Trigger:
+- push su main
 
-Idee (non ancora implementate):
-- Aggiungere scanner Trivy (immagini + fs + repo)
-- Aggiungere dependency audit (`npm audit --json`)
-- Integrare SonarQube (quality gate + coverage)
+Struttura a 2 job:
 
-## 12. Troubleshooting rapido
+1. Job lint  
+   - Checkout  
+   - Setup Node 20 + cache npm (scoped a `app/package-lock.json`)  
+   - `npm install`  
+   - `npm run lint:fix`
 
-| Problema | Causa tipica | Soluzione |
-|----------|--------------|-----------|
-| Pagina vuota / error 500 | DB non pronto | `docker compose logs db` e attendi health |
-| Test fallisce (conn refused) | Host/porta errati in CI | Verifica variabili env step test |
-| Modifiche codice non riflettono | Manca bind volume | Usa `docker-compose.override.yml` o `npm run dev` fuori container |
-| Dati spariti | Volume rimosso | Evita `docker compose down -v` se non serve |
+2. Job test (needs: lint)  
+   - Avvia servizio Postgres 15-alpine con healthcheck  
+   - Re-installa dipendenze (i job non condividono workspace/cache runtime, solo cache npm)  
+   - Installa client psql  
+   - Esegue script schema `db-init/init.sql`  
+   - Esegue `npm test` con variabili puntate a `localhost` (service esposto internamente)
+
+

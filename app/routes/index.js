@@ -1,24 +1,44 @@
 'use strict';
 
-var express = require('express');
-const pool = require('../db');
-var router = express.Router();
-let dayjs = require('dayjs');
+const express = require('express');
+const router = express.Router();
+const userDAO = require('../models/dao/userDAO');
 
-/* GET home page. */
-router.get('/', async function(req, res) {
-  let users;
+// GET home page
+router.get('/', async (req, res) => {
+  let users = [];
   try {
-    const result = await pool.query('SELECT id, nome, cognome, email, data_di_nascita FROM users ORDER BY id ASC');
-    users = (result.rows || []).map(u => ({
-      ...u,
-      data_di_nascita: u.data_di_nascita ? dayjs(u.data_di_nascita).format('DD/MM/YYYY') : '',
-    }));
+    users = await userDAO.getAllUsers();
   } catch (err) {
-    console.error(err);
-  }
-  finally {
+    console.error('[Users] errore:', err);
+  } finally {
     res.render('index', { title: 'Simple CI/CD', users });
+  }
+});
+
+// CREA utente 
+router.post('/users', async (req, res) => {
+  const { nome, cognome, email, data_di_nascita } = req.body || {};
+  if (!nome || !cognome || !email) {
+    return res.redirect('/'); 
+  }
+  try {
+    await userDAO.createUser({ nome, cognome, email, data_di_nascita });
+    return res.redirect('/');
+  } catch (err) {
+    console.error('[createUser] errore:', err);
+    return res.redirect('/');
+  }
+});
+
+// ELIMINA utente
+router.post('/users/:id/delete', async (req, res) => {
+  try {
+    await userDAO.deleteUser(Number(req.params.id));
+    return res.redirect('/');
+  } catch (err) {
+    console.error('[deleteUser] errore:', err);
+    return res.redirect('/');
   }
 });
 
