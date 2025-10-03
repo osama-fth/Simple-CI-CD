@@ -18,12 +18,12 @@ router.get('/', async (req, res) => {
 
 // CREA utente 
 router.post('/users', async (req, res) => {
-  const { nome, cognome, email, data_di_nascita } = req.body || {};
+  const { nome, cognome, email, sesso, data_di_nascita } = req.body || {};
   if (!nome || !cognome || !email) {
     return res.redirect('/'); 
   }
   try {
-    await userDAO.createUser({ nome, cognome, email, data_di_nascita });
+    await userDAO.createUser({ nome, cognome, email, sesso, data_di_nascita });
     return res.redirect('/');
   } catch (err) {
     console.error('[createUser] errore:', err);

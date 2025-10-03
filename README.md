@@ -1,30 +1,30 @@
 # Simple CI/CD
 
-Repository di esempio per introdurre gradualmente pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una piccola applicazione Node.js + PostgreSQL.
+Repository di esempio per introdurre gradualmente pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una applicazione Node.js + PostgreSQL.
 
 ## 1. Architettura
 
 Componenti:
 - App Node.js / Express (vista EJS) – codice in [app/](app)
-- Database PostgreSQL – inizializzazione in [db-init/init.sql](db-init/init.sql)
-- Orchestrazione locale con Docker Compose ([docker-compose.yml](docker-compose.yml))
-- Pipeline GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml))
+- Database PostgreSQL – init + seed in [db-init/init.sql](db-init/init.sql)
+- Orchestrazione locale: [docker-compose.yml](docker-compose.yml)
+- Pipeline GitHub Actions: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
 
 ## 2. Requisiti
 
-- Docker / Docker Compose
+Docker + Docker Compose (v2).
 
 Verifica:
 ```bash
 docker --version
 ```
 
-## 3. Avvio rapido
+## 3. Avvio locale
 
 ```bash
 cp .env.example .env
 docker compose up --build
-# Apri: http://localhost:3000
+# http://localhost:3000
 ```
 
 Arresto:
@@ -44,52 +44,85 @@ docker compose logs -f app
 docker compose logs -f db
 ```
 
+Esecuzione test dentro il container già avviato:
+```bash
+docker compose exec app npm test
+```
+
 ## 4. Variabili ambiente
 
-Definite in [.env.example](.env.example):
+Definite in [.env.example](.env.example) e caricate da [app/db.js](app/db.js).
 
 | Nome | Descrizione | Default |
 |------|-------------|---------|
-| PORT | Porta app web | 3000 |
-| POSTGRES_HOST | Host DB (service name) | db |
+| PORT | Porta app | 3000 |
+| POSTGRES_HOST | Host DB (service) | db |
 | POSTGRES_PORT | Porta DB | 5432 |
-| POSTGRES_USER | Utente DB | postgres |
-| POSTGRES_PASSWORD | Password DB | postgres |
-| POSTGRES_DB | Nome database | mydb |
+| POSTGRES_USER | Utente | postgres |
+| POSTGRES_PASSWORD | Password | postgres |
+| POSTGRES_DB | Database | mydb |
 
-Usate dal pool in [app/db.js](app/db.js).
-
-## 5. Comandi NPM (dentro `app/`)
+## 5. Script NPM (in [app/package.json](app/package.json))
 
 ```bash
-npm install        # install dipendenze
-npm run dev        # avvio con nodemon (hot reload)
-npm start          # avvio normale (usa ./bin/www)
-npm test           # test integrazione (HTTP + query)
-npm run lint       # lint
-npm run lint:fix   # lint + fix
+npm install      # dipendenze
+npm run dev      # avvio con nodemon (hot reload)
+npm start        # avvio normale
+npm run test     # test integrazione: HTTP + query DB 
+npm run lint     # lint
+npm run lint:fix # lint con fix
 ```
 
-## 6. Pipeline CI (GitHub Actions)
+## 6. Test di integrazione
 
-File: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+Il test ([app/test/app.test.js](app/test/app.test.js)):
+- Avvia l’app su porta effimera (server.listen(0))
+- Richiede GET /
+- Verifica HTTP 200 e COUNT utenti su tabella users tramite pool Postgres.
+
+Richiede che il DB sia inizializzato (gestito automaticamente da Compose tramite mount [db-init/](db-init)).
+
+## 7. Pipeline CI
+
+Workflow: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
 
 Trigger:
-- push su main
+- push e pull_request su main
 
-Struttura a 2 job:
+Struttura (2 job):
 
-1. Job lint  
+1. lint-and-audit  
    - Checkout  
-   - Setup Node 20 + cache npm (scoped a `app/package-lock.json`)  
-   - `npm install`  
-   - `npm run lint:fix`
+   - Setup Node 20
+   - npm install  
+   - npm audit --audit-level=high (fallisce su vulnerabilità >= high)  
+   - npm run lint  
 
-2. Job test (needs: lint)  
-   - Avvia servizio Postgres 15-alpine con healthcheck  
-   - Re-installa dipendenze (i job non condividono workspace/cache runtime, solo cache npm)  
-   - Installa client psql  
-   - Esegue script schema `db-init/init.sql`  
-   - Esegue `npm test` con variabili puntate a `localhost` (service esposto internamente)
+2. build-and-test (needs: lint-and-audit)  
+   - Checkout  
+   - Copia .env.example → .env  
+   - docker compose up -d --build (build immagini + avvio servizi: Postgres + app in modalità dev)  
+   - Wait DB: loop pg_isready (fino a 30 tentativi)  
+   - Wait app: polling HTTP / (fino a 30 tentativi per ottenere 200)  
+   - docker compose exec app npm run test (esegue test integrazione dentro il container)  
+   - Logs (solo se fallimento)  
+   - Cleanup: docker compose down -v  
+
+## 8. Pulizia volumi
+
+Per rimuovere dati persistenti:
+```bash
+docker compose down -v
+```
+
+## 9. Struttura principale
+
+- App: [app/](app)
+- Test: [app/test/app.test.js](app/test/app.test.js)
+- DAO: [app/models/dao/userDAO.js](app/models/dao/userDAO.js)
+- Vista: [app/views/index.ejs](app/views/index.ejs)
+- DB init: [db-init/init.sql](db-init/init.sql)
+- Dockerfile app: [app/Dockerfile](app/Dockerfile)
+- Pipeline: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
 
 

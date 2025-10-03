@@ -25,12 +25,12 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - name: Install deps
         run: npm install
-      - name: Lint
-        run: npm run lint
       - name: Security audit (fail high/critical)
         run: |
           set -e
           npm audit --audit-level=high || (echo "Vulnerabilità >=high trovate" && exit 1)
+      - name: Lint
+        run: npm run lint
 
   build-and-test:
     runs-on: ubuntu-latest
@@ -44,8 +44,27 @@ jobs:
       - name: Compose up (build + start)
         run: docker compose up -d --build
 
-      - name: Run integration tests 
-        run: sleep 5 && docker compose exec -T app npm run test
+      - name: Wait for DB readiness
+        run: |
+          for i in $(seq 1 30); do
+            docker compose exec -T db pg_isready -U postgres -d mydb && exit 0
+            sleep 2
+          done
+          echo "DB non pronto entro il timeout"; docker compose logs db; exit 1
+
+      - name: Wait for app readiness (HTTP 200 /)
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || true)
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App non pronta"; docker compose logs app; exit 1
+
+      - name: Run integration tests
+        run: docker compose exec -T app npm run test
 
       - name: Logs (on failure)
         if: failure()

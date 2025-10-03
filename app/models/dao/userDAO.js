@@ -7,7 +7,7 @@ class UserDAO {
 
   async getAllUsers() {
     const sql = `
-      SELECT id, nome, cognome, email, data_di_nascita
+      SELECT *
       FROM users
       ORDER BY id ASC
     `;
@@ -20,14 +20,14 @@ class UserDAO {
     }));
   }
 
-  async createUser({ nome, cognome, email, data_di_nascita }) {
+  async createUser({ nome, cognome, email, sesso, data_di_nascita }) {
     const sql = `
-          INSERT INTO users (nome, cognome, email, data_di_nascita)
-          VALUES ($1, $2, $3, $4)
-          RETURNING id, nome, cognome, email, data_di_nascita
+          INSERT INTO users (nome, cognome, email, sesso, data_di_nascita)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING id, nome, cognome, email, sesso, data_di_nascita
         `;
 
-    await pool.query(sql, [nome, cognome, email, data_di_nascita]);
+    await pool.query(sql, [nome, cognome, email, sesso, data_di_nascita]);
     return;
   }
 

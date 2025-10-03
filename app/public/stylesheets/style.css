@@ -106,6 +106,11 @@ body.app-layout {
   transition: var(--transition);
 }
 
+.table-modern thead th,
+.table-modern tbody td {
+  text-align: center;
+}
+
 .id-badge {
   background: var(--c-primary-soft);
   color: var(--c-primary);
