@@ -46,7 +46,7 @@ docker compose logs -f db
 
 Esecuzione test dentro il container già avviato:
 ```bash
-docker compose exec app npm test
+docker compose exec app npm run test
 ```
 
 ## 4. Variabili ambiente
@@ -68,7 +68,7 @@ Definite in [.env.example](.env.example) e caricate da [app/db.js](app/db.js).
 npm install      # dipendenze
 npm run dev      # avvio con nodemon (hot reload)
 npm start        # avvio normale
-npm run test     # test integrazione: HTTP + query DB 
+npm run test     # test integrazione: HTTP + query DB
 npm run lint     # lint
 npm run lint:fix # lint con fix
 ```
@@ -80,7 +80,7 @@ Il test ([app/test/app.test.js](app/test/app.test.js)):
 - Richiede GET /
 - Verifica HTTP 200 e COUNT utenti su tabella users tramite pool Postgres.
 
-Richiede che il DB sia inizializzato (gestito automaticamente da Compose tramite mount [db-init/](db-init)).
+Il DB viene inizializzato automaticamente tramite i file in [db-init/](db-init) montati nel servizio PostgreSQL di Compose.
 
 ## 7. Pipeline CI
 
@@ -89,40 +89,33 @@ Workflow: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.ym
 Trigger:
 - push e pull_request su main
 
-Struttura (2 job):
+Concurrency:
+- gruppo: ci-${{ github.ref }} (cancella run in corso sullo stesso ref)
 
-1. lint-and-audit  
-   - Checkout  
-   - Setup Node 20
-   - npm install  
-   - npm audit --audit-level=high (fallisce su vulnerabilità >= high)  
-   - npm run lint  
+Struttura (3 job):
 
-2. build-and-test (needs: lint-and-audit)  
-   - Checkout  
-   - Copia .env.example → .env  
-   - docker compose up -d --build (build immagini + avvio servizi: Postgres + app in modalità dev)  
-   - Wait DB: loop pg_isready (fino a 30 tentativi)  
-   - Wait app: polling HTTP / (fino a 30 tentativi per ottenere 200)  
-   - docker compose exec app npm run test (esegue test integrazione dentro il container)  
-   - Logs (solo se fallimento)  
-   - Cleanup: docker compose down -v  
+1) lint-and-audit
+- Checkout repository
+- Setup Node 20 (cache npm su app/package-lock.json)
+- npm install
+- npm audit --audit-level=high (fallisce su vulnerabilità >= HIGH)
+- npm run lint
 
-## 8. Pulizia volumi
+2) build-and-scan-and-test (needs: lint-and-audit)
+- Checkout
+- Copia .env.example → .env
+- docker compose up -d --build (build immagini + avvio stack)
+- Trivy scan immagine app (severità HIGH,CRITICAL → fail)
+- Trivy scan postgres:15-alpine (severità HIGH,CRITICAL → fail)
+- Attesa readiness DB (pg_isready, max 30 tentativi)
+- Attesa readiness app (HTTP 200 su /, max 30 tentativi)
+- Esecuzione test: docker compose exec app npm run test
+- Logs on failure
+- Cleanup: docker compose down -v
 
-Per rimuovere dati persistenti:
-```bash
-docker compose down -v
-```
+3) deploy (simulato)
+- Echo descrittivo: “Simulazione deploy: può avvenire su VPS o su un PaaS.”
 
-## 9. Struttura principale
-
-- App: [app/](app)
-- Test: [app/test/app.test.js](app/test/app.test.js)
-- DAO: [app/models/dao/userDAO.js](app/models/dao/userDAO.js)
-- Vista: [app/views/index.ejs](app/views/index.ejs)
-- DB init: [db-init/init.sql](db-init/init.sql)
-- Dockerfile app: [app/Dockerfile](app/Dockerfile)
-- Pipeline: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
-
-
+Note:
+- Le scansioni Trivy sono posizionate dopo la build e prima dei test per fallire presto in caso di vulnerabilità gravi.
+- Il test gira all’interno del container app già avviato, condividendo le stesse variabili ambiente dell’esecuzione.
