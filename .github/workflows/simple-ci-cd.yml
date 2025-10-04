@@ -32,7 +32,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-  build-and-test:
+  build-and-scan-and-test:
     runs-on: ubuntu-latest
     needs: lint-and-audit
     steps:
@@ -41,8 +41,33 @@ jobs:
       - name: Copy .env from example
         run: cp .env.example .env
 
-      - name: Compose up (build + start)
-        run: docker compose up -d --build
+      - name: Compose build 
+        run: docker compose up -d --build 
+    
+      - name: Get app image ref
+        id: appimg
+        run: |
+          cid="$(docker compose ps -q app)"
+          ref="$(docker inspect -f '{{.Config.Image}}' "$cid")"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Trivy scan app image (HIGH,CRITICAL)
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ steps.appimg.outputs.ref }}
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Trivy scan postgres:15-alpine (HIGH,CRITICAL)
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: 'postgres:15-alpine'
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
 
       - name: Wait for DB readiness
         run: |
