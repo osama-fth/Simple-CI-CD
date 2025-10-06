@@ -1,6 +1,6 @@
 # Simple CI/CD
 
-Repository di esempio per introdurre gradualmente pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una applicazione Node.js + PostgreSQL.
+Introdurre graduale a pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una applicazione Node.js + PostgreSQL.
 
 ## 1. Architettura
 
