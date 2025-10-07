@@ -1,30 +1,42 @@
-# Simple CI/CD
+# Simple CI/CD 🚀
 
-Introduzione graduale a pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una applicazione Node.js + PostgreSQL.
+<p align="center">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-Engine-2496ED?logo=docker&logoColor=white">
+  <img alt="Docker Compose" src="https://img.shields.io/badge/Compose-v2-2496ED?logo=docker&logoColor=white">
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-7.x-47A248?logo=mongodb&logoColor=white">
+  <img alt="Node.js" src="https://img.shields.io/badge/Node-20.x-339933?logo=node.js&logoColor=white">
+  <img alt="Express" src="https://img.shields.io/badge/Express-4.x-000000?logo=express&logoColor=white">
+  <img alt="ESLint" src="https://img.shields.io/badge/Code%20Style-ESLint-4B32C3?logo=eslint&logoColor=white">
+  <img alt="Trivy" src="https://img.shields.io/badge/Security-Trivy-1904DA?logo=aqua&logoColor=white">
+</p>
 
-## 1. Architettura
+
+Introduzione graduale a pratiche DevSecOps: containerizzazione, automazione CI, test, qualità e sicurezza su una applicazione Node.js + MongoDB.
+
+## 🧱 Architettura
 
 Componenti:
-- App Node.js / Express (vista EJS) – codice in [app/](app)
-- Database PostgreSQL – init + seed in [db-init/init.sql](db-init/init.sql)
-- Orchestrazione locale: [docker-compose.yml](docker-compose.yml)
-- Pipeline GitHub Actions: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
+- 🖥️ App Node.js / Express (vista EJS) – codice in [app/](app)
+- 🗄️ Database MongoDB – init + seed in [db-init/init.js](db-init/init.js)
+- 🐳 Orchestrazione locale: [docker-compose.yml](docker-compose.yml)
+- ⚙️ Pipeline GitHub Actions: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
 
-## 2. Requisiti
+## 🧰 Requisiti
 
-Docker + Docker Compose (v2).
+- Docker + Docker Compose (v2)
 
 Verifica:
 ```bash
 docker --version
 ```
 
-## 3. Avvio locale
+## ▶️ Avvio rapido
 
 ```bash
 cp .env.example .env
-docker compose up --build
-# http://localhost:3000
+docker compose build --no-cache
+docker compose up
+# apri: http://localhost:3000
 ```
 
 Arresto:
@@ -32,7 +44,7 @@ Arresto:
 docker compose down
 ```
 
-Reset totale (drop volume):
+Reset totale (drop volumi/dati):
 ```bash
 docker compose down -v
 ```
@@ -44,78 +56,61 @@ docker compose logs -f app
 docker compose logs -f db
 ```
 
-Esecuzione test dentro il container già avviato:
+Esecuzione test dentro il container:
 ```bash
 docker compose exec app npm run test
 ```
 
-## 4. Variabili ambiente
+## 🔧 Variabili ambiente
 
-Definite in [.env.example](.env.example) e caricate da [app/db.js](app/db.js).
+Definite in [.env.example](.env.example) e lette da [app/db.js](app/db.js).
 
-| Nome | Descrizione | Default |
-|------|-------------|---------|
-| PORT | Porta app | 3000 |
-| POSTGRES_HOST | Host DB (service) | db |
-| POSTGRES_PORT | Porta DB | 5432 |
-| POSTGRES_USER | Utente | postgres |
-| POSTGRES_PASSWORD | Password | postgres |
-| POSTGRES_DB | Database | mydb |
+| Nome           | Descrizione              | Default/Esempio |
+|----------------|--------------------------|-----------------|
+| PORT           | Porta app                | 3000            |
+| MONGO_HOST     | Host MongoDB             | db              |
+| MONGO_PORT     | Porta MongoDB            | 27017           |
+| MONGO_DB       | Nome database            | mydb            |
+| MONGO_USER     | Utente (auth)            | root            |
+| MONGO_PASSWORD | Password (auth)          | root            |
 
-## 5. Script NPM (in [app/package.json](app/package.json))
+## 📜 Script NPM (in [app/package.json](app/package.json))
 
 ```bash
 npm install      # dipendenze
 npm run dev      # avvio con nodemon (hot reload)
 npm start        # avvio normale
-npm run test     # test integrazione: HTTP + query DB
+npm run test     # test integrazione: HTTP + query su MongoDB
 npm run lint     # lint
 npm run lint:fix # lint con fix
 ```
 
-## 6. Test di integrazione
+## 🧪 Test di integrazione
 
-Il test ([app/test/app.test.js](app/test/app.test.js)):
-- Avvia l’app su porta effimera (server.listen(0))
-- Richiede GET /
-- Verifica HTTP 200 e COUNT utenti su tabella users tramite pool Postgres.
+[app/test/app.test.js](app/test/app.test.js):
+- Avvia l’app su porta effimera
+- GET / → atteso 200
+- Conta documenti in collection users (MongoDB)
 
-Il DB viene inizializzato automaticamente tramite i file in [db-init/](db-init) montati nel servizio PostgreSQL di Compose.
+Il DB viene inizializzato con [db-init/init.js](db-init/init.js).
 
-## 7. Pipeline CI
+## 🛠️ Pipeline CI (sintesi)
 
 Workflow: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
+- 🧹 Lint + 🔒 npm audit
+- 🐳 Build/Up stack con Docker Compose
+- 🛡️ Scansione immagini con Trivy (app, mongo:7)
+- ⏱️ Attesa readiness DB/app
+- 🧪 Esecuzione test nel container app
+- 🧼 Cleanup finale
 
-Trigger:
-- push e pull_request su main
+## 📁 Struttura
 
-Concurrency:
-- gruppo: ci-${{ github.ref }} (cancella run in corso sullo stesso ref)
-
-Struttura (3 job):
-
-1) lint-and-audit
-- Checkout repository
-- Setup Node 20 (cache npm su app/package-lock.json)
-- npm install
-- npm audit --audit-level=high (fallisce su vulnerabilità >= HIGH)
-- npm run lint
-
-2) build-and-scan-and-test (needs: lint-and-audit)
-- Checkout
-- Copia .env.example → .env
-- docker compose up -d --build (build immagini + avvio stack)
-- Trivy scan immagine app (severità HIGH,CRITICAL → fail)
-- Trivy scan postgres:15-alpine (severità HIGH,CRITICAL → fail)
-- Attesa readiness DB (pg_isready, max 30 tentativi)
-- Attesa readiness app (HTTP 200 su /, max 30 tentativi)
-- Esecuzione test: docker compose exec app npm run test
-- Logs on failure
-- Cleanup: docker compose down -v
-
-3) deploy (simulato)
-- Echo descrittivo: “Simulazione deploy: può avvenire su VPS o su un PaaS.”
-
-Note:
-- Le scansioni Trivy sono posizionate dopo la build e prima dei test per fallire presto in caso di vulnerabilità gravi.
-- Il test gira all’interno del container app già avviato, condividendo le stesse variabili ambiente dell’esecuzione.
+- App: [app/](app)
+- Vista: [app/views/index.ejs](app/views/index.ejs)
+- Router: [app/routes/index.js](app/routes/index.js)
+- DAO: [app/models/dao/userDAO.js](app/models/dao/userDAO.js)
+- DB init: [db-init/init.js](db-init/init.js)
+- Config Mongo: [db-init/mongod.conf](db-init/mongod.conf)
+- Dockerfile app: [app/Dockerfile](app/Dockerfile)
+- CI pipeline: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)

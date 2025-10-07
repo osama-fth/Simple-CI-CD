@@ -23,12 +23,15 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: app/package-lock.json
+
       - name: Install deps
         run: npm install
+
       - name: Security audit (fail high/critical)
         run: |
           set -e
           npm audit --audit-level=high || (echo "Vulnerabilità >=high trovate" && exit 1)
+
       - name: Lint
         run: npm run lint
 
@@ -60,10 +63,10 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
-      - name: Trivy scan postgres:15-alpine (HIGH,CRITICAL)
+      - name: Trivy scan mongo:7 (HIGH,CRITICAL)
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: 'postgres:15-alpine'
+          image-ref: 'mongo:7'
           format: 'table'
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
@@ -72,10 +75,10 @@ jobs:
       - name: Wait for DB readiness
         run: |
           for i in $(seq 1 30); do
-            docker compose exec -T db pg_isready -U postgres -d mydb && exit 0
+            docker compose exec -T db sh -lc 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "db.adminCommand({ ping: 1 })"' && exit 0
             sleep 2
           done
-          echo "DB non pronto entro il timeout"; docker compose logs db; exit 1
+          echo "MongoDB non pronto"; docker compose logs db; exit 1
 
       - name: Wait for app readiness (HTTP 200 /)
         run: |

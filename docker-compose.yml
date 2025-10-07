@@ -1,17 +1,19 @@
 services:
   db:
-    image: postgres:15-alpine
-    container_name: postgres-db
+    image: mongo:7
+    container_name: mongo-db
+    env_file:
+      - ./.env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydb
-    ports:
-      - "5432:5432"
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
     volumes:
-      - db-data:/var/lib/postgresql/data
-      - ./db-init:/docker-entrypoint-initdb.d
-
+      - db-data:/data/db
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+      - ./db-init/mongod.conf:/etc/mongo/mongod.conf:ro
+    command: ["--config", "/etc/mongo/mongod.conf"]
+  
   app:
     build:
       context: ./app
@@ -22,20 +24,6 @@ services:
       - "3000:3000"
     depends_on:
       - db
-    command: npm run dev           
-    develop:
-      watch:
-        - action: sync             
-          path: ./app
-          target: /app
-          ignore:
-            - node_modules/
-            - test/
-            - "*.log"
-        - action: rebuild          
-          path: ./app/package.json
-        - action: rebuild
-          path: ./app/package-lock.json
 
 volumes:
   db-data:

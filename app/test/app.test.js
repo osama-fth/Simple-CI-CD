@@ -1,6 +1,6 @@
 const http = require('http');
 const assert = require('assert');
-const pool = require('../db');
+const { getDb } = require('../db');
 const app = require('../app');
 
 async function run() {
@@ -12,9 +12,10 @@ async function run() {
         (async () => {
           try {
             assert.strictEqual(res.statusCode, 200, 'Status non 200');
-            const r = await pool.query('SELECT COUNT(*)::int AS c FROM users');
-            assert.ok(r.rows[0].c >= 0, 'Query users fallita');
-            console.log(`TEST OK: / => 200, users count=${r.rows[0].c}`);
+            const db = await getDb();
+            const c = await db.collection('users').countDocuments();
+            assert.ok(c >= 0, 'Query users fallita');
+            console.log(`TEST OK: / => 200, users count=${c}`);
             server.close(() => process.exit(0));
           } catch (e) {
             console.error('TEST FALLITO:', e.message);

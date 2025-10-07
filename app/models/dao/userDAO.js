@@ -1,40 +1,40 @@
 'use strict';
 
-const pool = require('../../db');
+const { getDb } = require('../../db');
 const dayjs = require('dayjs');
+const { ObjectId } = require('mongodb');
 
 class UserDAO {
-
   async getAllUsers() {
-    const sql = `
-      SELECT *
-      FROM users
-      ORDER BY id ASC
-    `;
-    const { rows } = await pool.query(sql);
-    return rows.map(u => ({
-      ...u,
-      data_di_nascita: u.data_di_nascita
-        ? dayjs(u.data_di_nascita).format('DD/MM/YYYY')
-        : '',
+    const db = await getDb();
+    const docs = await db.collection('users').find({}).sort({ _id: 1 }).toArray();
+    return docs.map(u => ({
+      id: u._id.toString(),
+      nome: u.nome,
+      cognome: u.cognome,
+      email: u.email,
+      sesso: u.sesso,
+      data_di_nascita: u.data_di_nascita ? dayjs(u.data_di_nascita).format('DD/MM/YYYY') : '',
     }));
   }
 
   async createUser({ nome, cognome, email, sesso, data_di_nascita }) {
-    const sql = `
-          INSERT INTO users (nome, cognome, email, sesso, data_di_nascita)
-          VALUES ($1, $2, $3, $4, $5)
-          RETURNING id, nome, cognome, email, sesso, data_di_nascita
-        `;
-
-    await pool.query(sql, [nome, cognome, email, sesso, data_di_nascita]);
+    const db = await getDb();
+    const doc = {
+      nome,
+      cognome,
+      email,
+      sesso,
+      data_di_nascita: data_di_nascita ? new Date(data_di_nascita) : null,
+    };
+    await db.collection('users').insertOne(doc);
     return;
   }
 
   async deleteUser(id) {
-    const sql = 'DELETE FROM users WHERE id = $1 RETURNING id';
-    const { rows } = await pool.query(sql, [id]);
-    return rows.length === 1;
+    const db = await getDb();
+    const res = await db.collection('users').deleteOne({ _id: new ObjectId(id) });
+    return res.deletedCount === 1;
   }
 }
 

@@ -1,11 +1,28 @@
-const { Pool } = require('pg');
+const { MongoClient } = require('mongodb');
 
-const pool = new Pool({
-  host: process.env.POSTGRES_HOST,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-  port: Number(process.env.POSTGRES_PORT),
-});
+const {
+  MONGO_HOST = 'db',
+  MONGO_PORT = '27017',
+  MONGO_DB = 'mydb',
+  MONGO_USER,
+  MONGO_PASSWORD,
+} = process.env;
 
-module.exports = pool;
+// Costruisce sempre dai parametri separati (.env)
+const hasAuth = MONGO_USER && MONGO_PASSWORD;
+const uri = hasAuth
+  ? `mongodb://${encodeURIComponent(MONGO_USER)}:${encodeURIComponent(MONGO_PASSWORD)}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=admin`
+  : `mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}`;
+
+const client = new MongoClient(uri);
+let _db;
+
+async function getDb() {
+  if (!_db) {
+    await client.connect();
+    _db = client.db(MONGO_DB);
+  }
+  return _db;
+}
+
+module.exports = { getDb };

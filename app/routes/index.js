@@ -34,7 +34,7 @@ router.post('/users', async (req, res) => {
 // ELIMINA utente
 router.post('/users/:id/delete', async (req, res) => {
   try {
-    await userDAO.deleteUser(Number(req.params.id));
+    await userDAO.deleteUser(req.params.id);
     return res.redirect('/');
   } catch (err) {
     console.error('[deleteUser] errore:', err);
