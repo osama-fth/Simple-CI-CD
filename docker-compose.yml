@@ -3,22 +3,30 @@ services:
     image: postgres:latest
     container_name: postgres-db
     env_file:
-      - ./.env
+      - .env
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      - ci_net
 
   app:
     build:
       context: ./app
     container_name: node-app
     env_file:
-      - ./.env
+      - .env
     ports:
-      - "3000:3000"
+      - "${PORT}:3000"
     depends_on:
       - db
     command: npm start
-  
+    networks:
+      - ci_net
+
 volumes:
   db-data:
+
+networks:
+  ci_net:
+    driver: bridge
