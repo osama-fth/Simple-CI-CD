@@ -22,7 +22,7 @@ docker compose version
 ```
 
 Note runner self-hosted (breve):
-- macOS: installa Docker Desktop e registra il runner (Settings → Actions → Runners → New self-hosted runner).
+- Registra il runner (Settings → Actions → Runners → New self-hosted runner).
 - Il runner deve poter eseguire `docker` e `docker compose` senza sudo.
 - La porta 3000 deve essere libera per l’app durante il deploy locale.
 
@@ -97,10 +97,7 @@ Trigger:
 - push e pull_request su main
 
 Runner:
-- Tutti i job girano su un GitHub Actions runner self-hosted con Docker e Docker Compose v2.
-
-Concurrency:
-- gruppo: ci-${{ github.ref }} (cancella run in corso sullo stesso ref)
+- Tutti i job girano su un GitHub Actions runner self-hosted.
 
 Struttura (3 job):
 
@@ -118,7 +115,6 @@ Struttura (3 job):
 - Trivy scan immagine app (severità HIGH,CRITICAL – solo report, non blocca)
 - Trivy scan postgres:latest (severità HIGH,CRITICAL – solo report, non blocca)
 - Attesa readiness DB (pg_isready, max 30 tentativi)
-- Attesa readiness app (HTTP 200 su /, max 30 tentativi)
 - Test: docker compose exec app npm run test
 - Cleanup: docker compose down -v
 
