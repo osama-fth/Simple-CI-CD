@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   lint-and-audit:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: app
@@ -31,7 +31,7 @@ jobs:
         run: npm run lint
 
   build-and-scan-and-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: lint-and-audit
     steps:
       - uses: actions/checkout@v4
@@ -58,10 +58,10 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
 
-      - name: Trivy scan postgres:15-alpine (HIGH,CRITICAL)
+      - name: Trivy scan postgres:latest (HIGH,CRITICAL)
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: 'postgres:15-alpine'
+          image-ref: 'postgres:latest'
           format: 'table'
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
@@ -94,9 +94,17 @@ jobs:
         run: docker compose down -v
         
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-and-scan-and-test
     steps:
-      - name: Deploy (simulato)
-        run: echo "Simulazione deploy può avvenire su VPS o su un PaaS."
+      - uses: actions/checkout@v4
 
+      - name: Deploy
+        run: | 
+          cp .env.example .env
+          docker compose up -d --build 
+          echo "App pronta su http://localhost:${PORT}"
+      
+      - name: Pulisci immagini inutilizzate
+        if: always()
+        run: docker image prune -f

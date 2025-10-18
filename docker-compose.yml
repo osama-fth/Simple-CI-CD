@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:latest
     container_name: postgres-db
     env_file:
       - ./.env

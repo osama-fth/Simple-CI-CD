@@ -8,16 +8,23 @@ Componenti:
 - App Node.js / Express (vista EJS) – codice in [app/](app)
 - Database PostgreSQL – init + seed in [db-init/init.sql](db-init/init.sql)
 - Orchestrazione locale: [docker-compose.yml](docker-compose.yml)
-- Pipeline GitHub Actions: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
+- Pipeline GitHub Actions (runner self-hosted): [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
 
 ## 2. Requisiti
 
-Docker + Docker Compose (v2).
+- Docker + Docker Compose (v2)
+- GitHub Actions runner self-hosted sulla macchina che esegue la pipeline, con accesso al demone Docker
 
 Verifica:
 ```bash
 docker --version
+docker compose version
 ```
+
+Note runner self-hosted (breve):
+- macOS: installa Docker Desktop e registra il runner (Settings → Actions → Runners → New self-hosted runner).
+- Il runner deve poter eseguire `docker` e `docker compose` senza sudo.
+- La porta 3000 deve essere libera per l’app durante il deploy locale.
 
 ## 3. Avvio locale
 
@@ -82,12 +89,15 @@ Il test ([app/test/app.test.js](app/test/app.test.js)):
 
 Il DB viene inizializzato automaticamente tramite i file in [db-init/](db-init) montati nel servizio PostgreSQL di Compose.
 
-## 7. Pipeline CI
+## 7. Pipeline CI (runner self-hosted)
 
 Workflow: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)
 
 Trigger:
 - push e pull_request su main
+
+Runner:
+- Tutti i job girano su un GitHub Actions runner self-hosted con Docker e Docker Compose v2.
 
 Concurrency:
 - gruppo: ci-${{ github.ref }} (cancella run in corso sullo stesso ref)
@@ -96,8 +106,8 @@ Struttura (3 job):
 
 1) lint-and-audit
 - Checkout repository
-- Setup Node 20 (cache npm su app/package-lock.json)
-- npm install
+- Setup Node (actions/setup-node)
+- npm ci
 - npm audit --audit-level=high (fallisce su vulnerabilità >= HIGH)
 - npm run lint
 
@@ -105,17 +115,19 @@ Struttura (3 job):
 - Checkout
 - Copia .env.example → .env
 - docker compose up -d --build (build immagini + avvio stack)
-- Trivy scan immagine app (severità HIGH,CRITICAL → fail)
-- Trivy scan postgres:15-alpine (severità HIGH,CRITICAL → fail)
+- Trivy scan immagine app (severità HIGH,CRITICAL – solo report, non blocca)
+- Trivy scan postgres:latest (severità HIGH,CRITICAL – solo report, non blocca)
 - Attesa readiness DB (pg_isready, max 30 tentativi)
 - Attesa readiness app (HTTP 200 su /, max 30 tentativi)
-- Esecuzione test: docker compose exec app npm run test
-- Logs on failure
+- Test: docker compose exec app npm run test
 - Cleanup: docker compose down -v
 
-3) deploy (simulato)
-- Echo descrittivo: “Simulazione deploy: può avvenire su VPS o su un PaaS.”
+3) deploy (locale su runner self-hosted)
+- Copia .env.example → .env
+- docker compose up -d --build (avvio/aggiornamento stack locale)
+- Stampa URL: http://localhost:${PORT}
+- Pulisce immagini dangling (docker image prune -f)
 
-Note:
-- Le scansioni Trivy sono posizionate dopo la build e prima dei test per fallire presto in caso di vulnerabilità gravi.
-- Il test gira all’interno del container app già avviato, condividendo le stesse variabili ambiente dell’esecuzione.
+Attenzione:
+- Il deploy avvia i container sul runner self-hosted e li lascia in esecuzione.
+- Verifica porta 3000 libera e volume persistente db-data per Postgres.
