@@ -7,8 +7,6 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./db-init:/docker-entrypoint-initdb.d
-    networks:
-      - ci_net
 
   app:
     build:
@@ -21,12 +19,7 @@ services:
     depends_on:
       - db
     command: npm start
-    networks:
-      - ci_net
 
 volumes:
   db-data:
 
-networks:
-  ci_net:
-    driver: bridge
