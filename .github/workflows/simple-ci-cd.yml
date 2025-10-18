@@ -50,22 +50,26 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
       - name: Trivy scan app image (HIGH,CRITICAL)
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: ${{ steps.appimg.outputs.ref }}
-          format: 'table'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '0'
-          ignore-unfixed: true
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.40.0 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            "${{ steps.appimg.outputs.ref }}"
 
       - name: Trivy scan postgres:latest (HIGH,CRITICAL)
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: 'postgres:latest'
-          format: 'table'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '0'
-          ignore-unfixed: true
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.40.0 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            "postgres:latest"
 
       - name: Wait for DB readiness
         run: |
