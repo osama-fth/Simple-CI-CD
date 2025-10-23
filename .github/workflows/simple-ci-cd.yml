@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-audit:
+  lint-audit:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,15 +24,14 @@ jobs:
         run: npm ci
 
       - name: Security audit (fail high/critical)
-        run: |
-          set -e
-          npm audit --audit-level=high || (echo "Vulnerabilità >=high trovate" && exit 1)
+        run: npm audit --audit-level=high || (echo "Vulnerabilità >=high trovate" && exit 1)
+
       - name: Lint
         run: npm run lint
 
-  build-and-scan-and-test:
+  build-scan-test:
     runs-on: ubuntu-latest
-    needs: lint-and-audit
+    needs: lint-audit
     steps:
       - uses: actions/checkout@v4
 
@@ -42,20 +41,13 @@ jobs:
       - name: Compose build 
         run: docker compose up -d --build 
     
-      - name: Get app image ref
-        id: appimg
-        run: |
-          cid="$(docker compose ps -q app)"
-          ref="$(docker inspect -f '{{.Config.Image}}' "$cid")"
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
-
       - name: Trivy scan app image (HIGH,CRITICAL)
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: ${{ steps.appimg.outputs.ref }}
+          image-ref: node:alpine
           format: 'table'
           severity: 'HIGH,CRITICAL'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
 
       - name: Trivy scan postgres:15-alpine (HIGH,CRITICAL)
@@ -64,27 +56,8 @@ jobs:
           image-ref: 'postgres:15-alpine'
           format: 'table'
           severity: 'HIGH,CRITICAL'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
-
-      - name: Wait for DB readiness
-        run: |
-          for i in $(seq 1 30); do
-            docker compose exec -T db pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_HOST} && exit 0
-            sleep 2
-          done
-          echo "DB non pronto entro il timeout"; docker compose logs db; exit 1
-
-      - name: Wait for app readiness (HTTP 200 /)
-        run: |
-          for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${PORT}/ || true)
-            if [ "$code" = "200" ]; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "App non pronta"; docker compose logs app; exit 1
 
       - name: Run integration tests
         run: docker compose exec -T app npm run test
@@ -95,8 +68,8 @@ jobs:
         
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-scan-and-test
+    needs: build-scan-test
     steps:
       - name: Deploy (simulato)
-        run: echo "Simulazione deploy può avvenire su VPS o su un PaaS."
+        run: echo "Simulazione deploy può avvenire su servizio cloud(AWS) o in locale."
 

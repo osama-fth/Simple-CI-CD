@@ -7,7 +7,7 @@
     "dev": "nodemon ./bin/www",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
-    "test": "node test/app.test.js"
+    "test": "node test/test.js"
   },
   "dependencies": {
     "dayjs": "^1.11.18",
