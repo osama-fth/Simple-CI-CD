@@ -10,20 +10,17 @@
     "test": "node test/test.js"
   },
   "dependencies": {
-    "dayjs": "^1.11.18",
-    "debug": "~2.6.9",
+    "dayjs": "^1.11.19",
+    "debug": "^4.4.3",
     "ejs": "^3.1.10",
-    "express": "^4.21.2",
-    "http-errors": "~1.6.3",
+    "express": "^5.1.0",
+    "http-errors": "^2.0.0",
     "morgan": "^1.10.1",
-    "dotenv": "^16.4.5",
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
-    "eslint": "^8.57.0"
-  },
-  "overrides": {
-    "cross-spawn": "^7.0.5"
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "nodemon": "^3.1.11"
   }
 }

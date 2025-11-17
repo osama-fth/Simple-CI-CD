@@ -6,7 +6,22 @@ const app = require('../app');
 let server;
 let port;
 
-// Test 1: Verifica che l'app sia raggiungibile
+async function waitForDb(maxMs = 20000) {
+  const start = Date.now();
+  let lastErr;
+  while (Date.now() - start < maxMs) {
+    try {
+      await pool.query('SELECT 1');
+      return;
+    } catch (e) {
+      lastErr = e;
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  throw lastErr || new Error('DB non pronto');
+}
+
+// TEST 1: App raggiungibile
 async function testAppRaggiungibile() {
   return new Promise((resolve, reject) => {
     const req = http.request(
@@ -26,32 +41,33 @@ async function testAppRaggiungibile() {
   });
 }
 
-// Test 2: Verifica che il DB contenga utenti
-async function testDatabase() {
-  try {
-    const result = await pool.query('SELECT COUNT(*)::int AS count FROM users');
-    assert.ok(result.rows[0].count >= 0, 'Query users fallita');
-    console.log(`✅ TEST 2: Database funzionante (${result.rows[0].count} utenti trovati)`);
-    return Promise.resolve();
-  } catch (err) {
-    return Promise.reject(err);
-  }
+// TEST 2: Esistenza dati in "libri"
+async function testLibriTable() {
+  const result = await pool.query('SELECT COUNT(*)::int AS count FROM libri');
+  assert.ok(result.rows[0].count >= 0, 'Query libri fallita');
+  console.log(`✅ TEST 2: Tabella libri OK (${result.rows[0].count} record)`);
 }
 
-// Esegue i test in sequenza
+// TEST 3: Vista "prestiti_attivi" accessibile
+async function testPrestitiAttiviView() {
+  const result = await pool.query('SELECT COUNT(*)::int AS count FROM prestiti_attivi');
+  assert.ok(result.rows[0].count >= 0, 'Vista prestiti_attivi non accessibile');
+  console.log(`✅ TEST 3: Vista prestiti_attivi OK (${result.rows[0].count} record)`);
+}
+
 async function runTests() {
   try {
-    // Avvio server
+    await waitForDb();
+
     server = app.listen(0, async () => {
       port = server.address().port;
       console.log(`Server di test avviato sulla porta ${port}`);
-      
+
       try {
-        // Esegui i test
         await testAppRaggiungibile();
-        await testDatabase();
-        
-        // Chiusura
+        await testLibriTable();
+        await testPrestitiAttiviView();
+
         console.log('🎉 Tutti i test completati con successo!');
         server.close(() => pool.end().then(() => process.exit(0)));
       } catch (err) {
@@ -60,7 +76,7 @@ async function runTests() {
       }
     });
   } catch (err) {
-    console.error('Errore di avvio del server:', err.message);
+    console.error('Errore di avvio del server o DB:', err.message);
     process.exit(1);
   }
 }

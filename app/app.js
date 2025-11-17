@@ -1,12 +1,10 @@
 var createError = require('http-errors');
 var express = require('express');
 var logger = require('morgan');
-require('dotenv').config();
 var indexRouter = require('./routes/index');
 
 var app = express();
 
-// view engine setup
 app.set('view engine', 'ejs');
 
 app.use(logger('dev'));
@@ -16,7 +14,15 @@ app.use(express.static('public'));
 
 app.use('/', indexRouter);
 
-// catch 404 and forward to error handler
+app.get([
+  '/favicon.ico',
+  '/apple-touch-icon.png',
+  '/apple-touch-icon-precomposed.png',
+  /^.*\.ico$/,
+], (req, res) => {
+  res.status(204).end();
+});
+
 app.use(function(req, res, next) {
   next(createError(404));
 });

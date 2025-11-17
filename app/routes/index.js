@@ -2,42 +2,51 @@
 
 const express = require('express');
 const router = express.Router();
-const userDAO = require('../models/dao/userDAO');
+const libraryDAO = require('../models/dao/libraryDAO');
 
-// GET home page
+// GET dashboard biblioteca
 router.get('/', async (req, res) => {
-  let users = [];
   try {
-    users = await userDAO.getAllUsers();
+    const [libri, prestitiAttivi, prestitiInRitardo] = await Promise.all([
+      libraryDAO.getLibriDisponibili(),
+      libraryDAO.getPrestitiAttivi(),
+      libraryDAO.getPrestitiInRitardo(),
+    ]);
+
+    res.render('index', {
+      title: 'Biblioteca · Gestionale',
+      libri,
+      prestitiAttivi,
+      prestitiInRitardo,
+    });
   } catch (err) {
-    console.error('[Users] errore:', err);
-  } finally {
-    res.render('index', { title: 'Simple CI/CD', users });
+    console.error('[Dashboard] errore:', err);
+    res.status(500).send('Errore interno');
   }
 });
 
-// CREA utente 
-router.post('/users', async (req, res) => {
-  const { nome, cognome, email, sesso, data_di_nascita } = req.body || {};
-  if (!nome || !cognome || !email) {
-    return res.redirect('/'); 
+// CREA nuovo prestito
+router.post('/prestiti', async (req, res) => {
+  const { codice_inventario, codice_fiscale, data_restituzione_prevista } = req.body || {};
+  if (!codice_inventario || !codice_fiscale || !data_restituzione_prevista) {
+    return res.redirect('/');
   }
   try {
-    await userDAO.createUser({ nome, cognome, email, sesso, data_di_nascita });
+    await libraryDAO.creaPrestito({ codice_inventario, codice_fiscale, data_restituzione_prevista });
     return res.redirect('/');
   } catch (err) {
-    console.error('[createUser] errore:', err);
+    console.error('[creaPrestito] errore:', err.message);
     return res.redirect('/');
   }
 });
 
-// ELIMINA utente
-router.post('/users/:id/delete', async (req, res) => {
+// REGISTRA restituzione prestito
+router.post('/prestiti/:id/restituisci', async (req, res) => {
   try {
-    await userDAO.deleteUser(Number(req.params.id));
+    await libraryDAO.registraRestituzione(Number(req.params.id));
     return res.redirect('/');
   } catch (err) {
-    console.error('[deleteUser] errore:', err);
+    console.error('[restituisciPrestito] errore:', err);
     return res.redirect('/');
   }
 });

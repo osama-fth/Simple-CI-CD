@@ -1,0 +1,32 @@
+const globals = require('globals');
+
+module.exports = [
+  // Ignora cartelle e il file di config stesso
+  { ignores: ['node_modules/**', 'eslint.config.*'] },
+
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+        ...globals.es2022,
+      },
+    },
+    rules: {
+      semi: ['error', 'always'],
+      quotes: ['warn', 'single', { avoidEscape: true }],
+      indent: ['warn', 2, { SwitchCase: 1 }],
+      'object-curly-spacing': ['warn', 'always'],
+      'array-bracket-spacing': ['warn', 'never'],
+      'comma-dangle': ['warn', 'always-multiline'],
+      'key-spacing': ['warn', { beforeColon: false, afterColon: true }],
+      'space-before-blocks': ['warn', 'always'],
+      'keyword-spacing': ['warn', { before: true, after: true }],
+      'space-infix-ops': 'warn',
+      'arrow-spacing': ['warn', { before: true, after: true }],
+      'no-multi-spaces': 'warn',
+    },
+  },
+];
