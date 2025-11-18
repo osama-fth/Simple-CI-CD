@@ -1,7 +1,6 @@
 const globals = require('globals');
 
 module.exports = [
-  // Ignora cartelle e il file di config stesso
   { ignores: ['node_modules/**', 'eslint.config.*'] },
 
   {

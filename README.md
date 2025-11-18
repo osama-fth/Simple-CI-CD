@@ -1,8 +1,8 @@
-# 📚 Biblioteca · Gestionale — Simple CI/CD · Node.js + PostgreSQL
+# 📚 Gestionale Biblioteca · Simple CI/CD
 
-![Node](https://img.shields.io/badge/Node-22.x-6DA55F?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/Node-24.x-6DA55F?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5.x-000000?logo=express&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17.7-4169E1?logo=postgresql&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Compose-v2-2496ED?logo=docker&logoColor=white)
 ![EJS](https://img.shields.io/badge/EJS-templates-8A2BE2)
 ![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3?logo=eslint&logoColor=white)
@@ -28,12 +28,6 @@ docker compose up --build
 ## ⚙️ Requisiti
 - Docker Desktop + Docker Compose v2
 
-Verifica:
-```bash
-docker --version
-docker compose version
-```
-
 ---
 
 ## ▶️ Avvio locale
@@ -53,7 +47,7 @@ docker compose logs -f app
 3) Usa l’app
 - Web: http://localhost:3000 (oppure http://localhost:$APP_PORT)
 - Dashboard: Libri disponibili, Prestiti attivi, Prestiti in ritardo
-- Creazione prestito e restituzione dalla UI
+- Creazione prestito e restituzione
 
 4) Stop e clean
 ```bash
@@ -117,7 +111,7 @@ npm run lint:fix
 
 Scansioni immagini con Trivy in CI:
 - Immagine app: `library-management-system:latest`
-- Immagine DB: `postgres:17-alpine`
+- Immagine DB: `postgres:17.7-alpine`
 
 Workflow: [.github/workflows/simple-ci-cd.yml](.github/workflows/simple-ci-cd.yml)  
 La pipeline fallisce su vulnerabilità HIGH/CRITICAL come configurato.

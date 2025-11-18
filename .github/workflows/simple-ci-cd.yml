@@ -3,8 +3,6 @@ name: SIMPLE-CI-CD
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -22,7 +20,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: 'app/package-lock.json'
 
@@ -44,7 +42,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Copy .env from example
         run: cp .env.example .env
@@ -73,7 +71,7 @@ jobs:
       - name: Trivy scan db image (CRITICAL)
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: 'postgres:17-alpine'
+          image-ref: 'postgres:17.7-alpine'
           format: 'table'
           severity: 'CRITICAL'
           exit-code: '1'
@@ -82,7 +80,7 @@ jobs:
       - name: Trivy scan db image (HIGH)
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: 'postgres:17-alpine'
+          image-ref: 'postgres:17.7-alpine'
           format: 'table'
           severity: 'HIGH'
           exit-code: '0'
