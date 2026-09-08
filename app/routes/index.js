@@ -3,7 +3,8 @@
 const express = require('express');
 const router = express.Router();
 const libraryDAO = require('../models/dao/libraryDAO');
-const { passport, ensureOperator } = require('../auth');
+const { passport } = require('../auth');
+const { ensureOperator, ensureGuest } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 const CF_REGEX = /^[A-Z0-9]{16}$/i;
@@ -22,10 +23,7 @@ function maskFiscalCode(cf) {
 // ==========================================
 
 // Pagina di accesso operatori
-router.get('/login', (req, res) => {
-  if (req.isAuthenticated() && req.user) {
-    return res.redirect('/');
-  }
+router.get('/login', ensureGuest, (req, res) => {
   res.render('login', {
     title: 'Accesso Operatori · Gestionale Biblioteca',
     error: req.query.error || null,

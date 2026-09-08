@@ -64,16 +64,7 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-function ensureOperator(req, res, next) {
-  if (req.isAuthenticated() && req.user && userDAO.isOperator(req.user)) {
-    return next();
-  }
-  if (req.isAuthenticated()) {
-    logger.auth(`Richiesta non autorizzata su [${req.originalUrl}] da @${req.user?.username}`);
-    return res.status(403).send('Accesso riservato agli operatori accreditati');
-  }
-  return res.redirect('/login');
-}
+const { ensureOperator } = require('./middleware/auth');
 
 module.exports = {
   passport,

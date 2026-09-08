@@ -67,9 +67,9 @@ Viste usate dalla UI:
 - `prestiti_in_ritardo`: prestiti attivi con scadenza superata
 
 Script SQL:
-- [db-init/01-tables.sql](db-init/01-tables.sql)
-- [db-init/02-views.sql](db-init/02-views.sql)
-- [db-init/03-seed.sql](db-init/03-seed.sql)
+- [postgres/01-tables.sql](postgres/01-tables.sql)
+- [postgres/02-views.sql](postgres/02-views.sql)
+- [postgres/03-seed.sql](postgres/03-seed.sql)
 
 Nota: gli script in `/docker-entrypoint-initdb.d` vengono eseguiti solo al primo bootstrap del volume dati. Per rieseguirli:
 ```bash

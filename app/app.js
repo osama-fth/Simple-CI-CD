@@ -4,13 +4,13 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
-const createError = require('http-errors');
 const express = require('express');
 const helmet = require('helmet');
 const session = require('express-session');
-const rateLimit = require('express-rate-limit');
 const { passport } = require('./auth');
 const logger = require('./utils/logger');
+const { authLimiter, writeLimiter } = require('./middleware/rateLimiter');
+const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const indexRouter = require('./routes/index');
 
 const app = express();
@@ -74,23 +74,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Rate limiter per endpoint di autenticazione e scrittura
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Troppi tentativi di accesso. Riprova tra 15 minuti.',
-});
-
-const writeLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Frequenza di operazioni troppo elevata. Riprova più tardi.',
-});
-
+// Applicazione rate limiters da middleware dedicato
 app.use('/login', authLimiter);
 app.use(['/prestiti', '/libri', '/tesserati', '/copie'], writeLimiter);
 
@@ -109,19 +93,8 @@ app.get([
   res.status(204).end();
 });
 
-// Gestione 404
-app.use(function(req, res, next) {
-  next(createError(404));
-});
-
-// Centralized error handler con logger [error]
-app.use(function(err, req, res, next) {
-  const status = err.status || 500;
-  logger.error(`HTTP ${status} su [${req.method} ${req.originalUrl}] - ${err.message}`);
-  if (res.headersSent) {
-    return next(err);
-  }
-  res.status(status).send(status === 404 ? 'Risorsa non trovata' : 'Si è verificato un errore interno');
-});
+// Middleware 404 e gestione centralizzata errori da middleware/errorHandler.js
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 module.exports = app;
