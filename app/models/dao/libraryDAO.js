@@ -29,13 +29,40 @@ class LibraryDAO {
     try {
       await client.query('BEGIN');
 
-      // Verifica che la copia non sia già in prestito attivo
+      // Verifica esistenza e stato della copia con lock esclusivo FOR UPDATE per prevenire race conditions
+      const copiaCheck = await client.query(
+        'SELECT stato FROM copie WHERE codice_inventario = $1 FOR UPDATE',
+        [codice_inventario],
+      );
+      if (copiaCheck.rowCount === 0) {
+        const err = new Error('Copia non trovata nel catalogo');
+        err.code = 'COPY_NOT_FOUND';
+        throw err;
+      }
+      if (copiaCheck.rows[0].stato !== 'Disponibile') {
+        const err = new Error('Copia non disponibile per il prestito');
+        err.code = 'COPY_NOT_AVAILABLE';
+        throw err;
+      }
+
+      // Verifica che il tesserato esista a catalogo
+      const memberCheck = await client.query(
+        'SELECT 1 FROM tesserati WHERE codice_fiscale = $1',
+        [codice_fiscale],
+      );
+      if (memberCheck.rowCount === 0) {
+        const err = new Error('Codice fiscale non registrato tra i tesserati');
+        err.code = 'MEMBER_NOT_FOUND';
+        throw err;
+      }
+
+      // Verifica aggiuntiva prestiti attivi
       const check = await client.query(
         'SELECT 1 FROM prestiti WHERE codice_inventario = $1 AND stato = $2',
         [codice_inventario, 'Attivo'],
       );
       if (check.rowCount > 0) {
-        const err = new Error('Copia già in prestito');
+        const err = new Error('Copia già associata a un prestito attivo');
         err.code = 'COPY_NOT_AVAILABLE';
         throw err;
       }
@@ -45,6 +72,12 @@ class LibraryDAO {
          VALUES ($1, $2, $3)
          RETURNING id_prestito`,
         [codice_inventario, codice_fiscale, data_restituzione_prevista],
+      );
+
+      // Sincronizza lo stato della copia fisica
+      await client.query(
+        "UPDATE copie SET stato = 'Prestata' WHERE codice_inventario = $1",
+        [codice_inventario],
       );
 
       await client.query('COMMIT');
@@ -58,14 +91,32 @@ class LibraryDAO {
   }
 
   async registraRestituzione(id_prestito) {
-    const { rows } = await pool.query(
-      `UPDATE prestiti
-       SET data_restituzione_effettiva = CURRENT_DATE, stato = 'Restituito'
-       WHERE id_prestito = $1 AND stato = 'Attivo'
-       RETURNING id_prestito`,
-      [id_prestito],
-    );
-    return rows.length === 1;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        `UPDATE prestiti
+         SET data_restituzione_effettiva = CURRENT_DATE, stato = 'Restituito'
+         WHERE id_prestito = $1 AND stato = 'Attivo'
+         RETURNING codice_inventario`,
+        [id_prestito],
+      );
+
+      if (rows.length === 1) {
+        await client.query(
+          "UPDATE copie SET stato = 'Disponibile' WHERE codice_inventario = $1",
+          [rows[0].codice_inventario],
+        );
+      }
+
+      await client.query('COMMIT');
+      return rows.length === 1;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 }
 

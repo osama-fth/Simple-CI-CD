@@ -100,3 +100,9 @@ CREATE TABLE IF NOT EXISTS prestiti (
     FOREIGN KEY (codice_fiscale) REFERENCES tesserati(codice_fiscale)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+-- Indice univoco parziale: impedisce a livello ACID che la stessa copia abbia più di un prestito 'Attivo' contemporaneo
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prestiti_attivi_copia
+ON prestiti (codice_inventario)
+WHERE stato = 'Attivo';
+
