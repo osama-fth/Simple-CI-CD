@@ -126,3 +126,10 @@ INSERT INTO prestiti (codice_inventario, codice_fiscale, data_prestito, data_res
 ('C1008','FMRLNS95H12L501Z','2023-12-20','2024-01-03','2024-01-02','Restituito'),
 ('C1010','LMCNDR93J21H501K','2023-11-05','2023-11-19','2023-11-18','Restituito'),
 ('C1011','DMRZLD91K10F205X','2023-10-01','2023-10-15','2023-10-16','In Ritardo');
+
+-- Operatori di biblioteca accreditati (password iniziale: Admin123!)
+INSERT INTO utenti (username, password_hash, nome, ruolo) VALUES
+('admin', '$2b$10$0hmFLDgVTKgIybo0NSdTfuYYacHyIKHuj7abIE4RehpNtYcLxAtJC', 'Amministratore Archivio', 'Admin'),
+('operatore1', '$2b$10$0hmFLDgVTKgIybo0NSdTfuYYacHyIKHuj7abIE4RehpNtYcLxAtJC', 'Marco Bellini', 'Operatore')
+ON CONFLICT (username) DO NOTHING;
+

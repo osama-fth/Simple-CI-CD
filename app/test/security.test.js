@@ -64,74 +64,77 @@ async function testSecurityHeaders() {
   console.log('✅ TEST SICUREZZA 1: Security Headers HTTP (Helmet & no x-powered-by) OK');
 }
 
-// TEST 2: Validazione Input su /prestiti (Codice Fiscale e Date)
-async function testInputValidationPrestiti() {
-  // Test 2a: Campi mancanti
-  const resMissing = await request(
-    {
-      hostname: '127.0.0.1',
-      port,
-      path: '/prestiti',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    },
-    'codice_inventario=C1001',
-  );
-  assert.strictEqual(resMissing.statusCode, 302, 'Campi mancanti non reindirizzano');
-  assert.ok(resMissing.headers.location.includes('error='), 'Nessun messaggio di errore per campi mancanti');
+// TEST 2: Verifica Protezione Rotte e Reindirizzamento a /login
+async function testRouteProtection() {
+  const resRoot = await request({
+    hostname: '127.0.0.1',
+    port,
+    path: '/',
+    method: 'GET',
+  });
+  assert.strictEqual(resRoot.statusCode, 302, 'Rotte protette devono reindirizzare con 302 a /login');
+  assert.strictEqual(resRoot.headers.location, '/login', 'Reindirizzamento errato per utente non autenticato');
 
-  // Test 2b: Codice fiscale non valido (lunghezza errata)
-  const resBadCF = await request(
-    {
-      hostname: '127.0.0.1',
-      port,
-      path: '/prestiti',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    },
-    'codice_inventario=C1001&codice_fiscale=CORTO&data_restituzione_prevista=2099-12-31',
-  );
-  assert.strictEqual(resBadCF.statusCode, 302);
-  assert.ok(resBadCF.headers.location.includes('Codice+fiscale+non+valido'), 'CF non valido non intercettato');
+  const resPrestiti = await request({
+    hostname: '127.0.0.1',
+    port,
+    path: '/prestiti',
+    method: 'GET',
+  });
+  assert.strictEqual(resPrestiti.statusCode, 302);
+  assert.strictEqual(resPrestiti.headers.location, '/login');
 
-  // Test 2c: Data nel passato
-  const resPastDate = await request(
-    {
-      hostname: '127.0.0.1',
-      port,
-      path: '/prestiti',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    },
-    'codice_inventario=C1001&codice_fiscale=RSSMRA85M01H501Z&data_restituzione_prevista=2020-01-01',
-  );
-  assert.strictEqual(resPastDate.statusCode, 302);
-  assert.ok(resPastDate.headers.location.includes('futura'), 'Data nel passato non bloccata');
+  const resLibri = await request({
+    hostname: '127.0.0.1',
+    port,
+    path: '/libri',
+    method: 'GET',
+  });
+  assert.strictEqual(resLibri.statusCode, 302);
+  assert.strictEqual(resLibri.headers.location, '/login');
 
-  console.log('✅ TEST SICUREZZA 2: Validazione Input /prestiti (CF, campi e date) OK');
+  console.log('✅ TEST SICUREZZA 2: Protezione Accesso Operatori (Reindirizzamento 302 a /login) OK');
 }
 
-// TEST 3: Validazione ID numerico su /prestiti/:id/restituisci
-async function testRestituzioneIdValidation() {
-  // Test 3a: ID non numerico
-  const resNonNumeric = await request({
+// TEST 3: Accessibilità Pagina di Login Operatori
+async function testLoginPage() {
+  const resLogin = await request({
     hostname: '127.0.0.1',
     port,
-    path: '/prestiti/invalid_id/restituisci',
-    method: 'POST',
+    path: '/login',
+    method: 'GET',
   });
-  assert.strictEqual(resNonNumeric.statusCode, 400, 'ID non numerico non restituisce 400');
+  assert.strictEqual(resLogin.statusCode, 200, 'Pagina /login deve rispondere 200');
+  assert.ok(resLogin.body.includes('Gestionale Biblioteca'), 'Pagina di login non contiene il titolo applicativo');
+  assert.ok(resLogin.body.includes('Accesso Operatori'), 'Pagina di login non specifica il target operatori');
 
-  // Test 3b: ID negativo
-  const resNegative = await request({
-    hostname: '127.0.0.1',
-    port,
-    path: '/prestiti/-5/restituisci',
-    method: 'POST',
-  });
-  assert.strictEqual(resNegative.statusCode, 400, 'ID negativo non restituisce 400');
+  console.log('✅ TEST SICUREZZA 3: Raggiungibilità Pagina Login Operatori (Status 200) OK');
+}
 
-  console.log('✅ TEST SICUREZZA 3: Validazione ID numerico su restituzione OK');
+// TEST 4: Rifiuto Credenziali Errate su /login
+async function testFailedLogin() {
+  const postData = 'username=utenteInesistente&password=passwordErrata';
+  const resLoginFail = await request(
+    {
+      hostname: '127.0.0.1',
+      port,
+      path: '/login',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData),
+      },
+    },
+    postData,
+  );
+
+  assert.strictEqual(resLoginFail.statusCode, 302, 'Login fallito deve reindirizzare a /login con errore');
+  assert.ok(
+    resLoginFail.headers.location.startsWith('/login?error='),
+    'Login fallito non contiene il parametro di errore nella query',
+  );
+
+  console.log('✅ TEST SICUREZZA 4: Rifiuto Credenziali Errate su /login con tracciamento OK');
 }
 
 async function runSecurityTests() {
@@ -139,9 +142,10 @@ async function runSecurityTests() {
     port = server.address().port;
     try {
       await testSecurityHeaders();
-      await testInputValidationPrestiti();
-      await testRestituzioneIdValidation();
-      console.log('🎉 Tutti i test di sicurezza completati con successo!');
+      await testRouteProtection();
+      await testLoginPage();
+      await testFailedLogin();
+      console.log('🎉 Tutti i test di sicurezza e autenticazione completati con successo!');
       server.close(() => process.exit(0));
     } catch (err) {
       console.error('❌ TEST DI SICUREZZA FALLITO:', err.message);

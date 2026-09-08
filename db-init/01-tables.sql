@@ -106,3 +106,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_prestiti_attivi_copia
 ON prestiti (codice_inventario)
 WHERE stato = 'Attivo';
 
+-- Tabella operatori della biblioteca per autenticazione
+CREATE TABLE IF NOT EXISTS utenti (
+    id_utente INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    nome VARCHAR(100) NOT NULL,
+    ruolo VARCHAR(30) NOT NULL DEFAULT 'Operatore'
+        CHECK (ruolo IN ('Operatore', 'Admin')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+

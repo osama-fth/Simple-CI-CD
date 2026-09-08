@@ -1,0 +1,198 @@
+<%- include('partials/head') %>
+<body>
+  <div class="app-shell">
+    <%- include('partials/sidebar') %>
+
+    <main class="app-main-content">
+      <div class="app-content-body">
+        <header class="section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h1 class="section-title">Registro Prestiti</h1>
+            <p class="section-subtitle">Gestione delle uscite, monitoraggio scadenze e ricevimento rientri</p>
+          </div>
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#newLoanModal">
+            <i class="bi bi-plus-circle"></i>
+            <span>Nuovo Prestito</span>
+          </button>
+        </header>
+
+        <%- include('partials/alerts') %>
+
+        <div class="panel-card">
+          <!-- Filtri a Tab & Barra di Ricerca -->
+          <div class="panel-toolbar d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <ul class="nav nav-pills nav-fill gap-1 flex-wrap">
+              <li class="nav-item">
+                <a class="btn btn-sm <%= activeTab === 'attivi' ? 'btn-primary' : 'btn-outline-secondary' %>" href="/prestiti?tab=attivi<%= searchQuery ? '&q=' + encodeURIComponent(searchQuery) : '' %>">
+                  In Corso
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="btn btn-sm <%= activeTab === 'ritardi' ? 'btn-danger' : 'btn-outline-secondary' %>" href="/prestiti?tab=ritardi<%= searchQuery ? '&q=' + encodeURIComponent(searchQuery) : '' %>">
+                  In Ritardo
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="btn btn-sm <%= activeTab === 'storico' ? 'btn-secondary' : 'btn-outline-secondary' %>" href="/prestiti?tab=storico<%= searchQuery ? '&q=' + encodeURIComponent(searchQuery) : '' %>">
+                  Storico Rientri
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="btn btn-sm <%= activeTab === 'tutti' ? 'btn-secondary' : 'btn-outline-secondary' %>" href="/prestiti?tab=tutti<%= searchQuery ? '&q=' + encodeURIComponent(searchQuery) : '' %>">
+                  Tutti
+                </a>
+              </li>
+            </ul>
+
+            <form action="/prestiti" method="GET" class="search-container d-flex">
+              <input type="hidden" name="tab" value="<%= activeTab %>" />
+              <i class="bi bi-search search-icon"></i>
+              <input
+                type="search"
+                name="q"
+                id="searchLoanInput"
+                class="form-control form-control-sm search-input"
+                placeholder="Cerca per tesserato, CF, codice o titolo..."
+                value="<%= searchQuery %>"
+              />
+            </form>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-data" id="loansTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tesserato</th>
+                  <th>Codice Copia</th>
+                  <th>Titolo Volume</th>
+                  <th>Uscita</th>
+                  <th>Scadenza Prevista</th>
+                  <th>Stato</th>
+                  <th class="text-end">Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (prestiti && prestiti.length) { %>
+                  <% prestiti.forEach(p => { %>
+                    <tr class="loan-row <%= p.in_ritardo ? 'table-danger' : '' %>">
+                      <td><code class="mono-code">#<%= p.id_prestito %></code></td>
+                      <td>
+                        <span class="fw-medium text-dark"><%= p.nome %> <%= p.cognome %></span>
+                        <div class="extra-small text-muted font-monospace"><%= p.codice_fiscale_mascherato %></div>
+                      </td>
+                      <td><code class="mono-code"><%= p.codice_inventario %></code></td>
+                      <td class="fw-medium"><%= p.titolo %></td>
+                      <td><%= new Date(p.data_prestito).toLocaleDateString('it-IT') %></td>
+                      <td>
+                        <%= new Date(p.data_restituzione_prevista).toLocaleDateString('it-IT') %>
+                        <% if (p.in_ritardo) { %>
+                          <span class="badge bg-danger ms-1">Scaduto</span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <% if (p.stato === 'Attivo' && !p.in_ritardo) { %>
+                          <span class="status-badge loaned"><i class="bi bi-hourglass-split"></i> In corso</span>
+                        <% } else if (p.in_ritardo) { %>
+                          <span class="status-badge overdue"><i class="bi bi-exclamation-triangle"></i> In ritardo</span>
+                        <% } else { %>
+                          <span class="status-badge available"><i class="bi bi-check-lg"></i> Restituito (<%= p.data_restituzione_effettiva ? new Date(p.data_restituzione_effettiva).toLocaleDateString('it-IT') : '' %>)</span>
+                        <% } %>
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <% if (p.stato === 'Attivo') { %>
+                            <form action="/prestiti/<%= p.id_prestito %>/restituisci" method="POST" class="d-inline" onsubmit="return confirm('Registrare la restituzione del prestito #<%= p.id_prestito %>?')">
+                              <button type="submit" class="btn btn-outline-success btn-sm" title="Segna come restituito">
+                                <i class="bi bi-arrow-return-left me-1"></i>Restituisci
+                              </button>
+                            </form>
+                          <% } %>
+                          <form action="/prestiti/<%= p.id_prestito %>/elimina" method="POST" class="d-inline" onsubmit="return confirm('Eliminare definitivamente il record del prestito #<%= p.id_prestito %>?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Elimina prestito">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="8" class="text-center py-4 text-muted small">
+                      <% if (searchQuery) { %>
+                        Nessun prestito corrisponde ai criteri di ricerca "<%= searchQuery %>".
+                      <% } else { %>
+                        Nessun prestito registrato per la vista selezionata.
+                      <% } %>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: Nuovo Prestito -->
+  <div class="modal fade" id="newLoanModal" tabindex="-1" aria-labelledby="newLoanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form action="/prestiti" method="POST">
+          <div class="modal-header">
+            <h2 class="h6 modal-title fw-semibold" id="newLoanModalLabel">Registra Nuovo Prestito</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="loan_inventory" class="form-label">Codice Inventario Copia</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-upc-scan"></i></span>
+                <input required type="text" name="codice_inventario" id="loan_inventory" class="form-control" placeholder="Es. C1001" maxlength="30" />
+              </div>
+              <small class="text-muted extra-small">La copia deve essere attualmente presente e con stato 'Disponibile'</small>
+            </div>
+
+            <div class="mb-3">
+              <label for="loan_cf" class="form-label">Codice Fiscale Tesserato</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-person-vcard"></i></span>
+                <input required type="text" name="codice_fiscale" id="loan_cf" class="form-control" placeholder="16 caratteri alfanumerici" pattern="[A-Za-z0-9]{16}" maxlength="16" />
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="loan_date" class="form-label">Data Restituzione Prevista</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-calendar-date"></i></span>
+                <input required type="date" name="data_restituzione_prevista" id="loan_date" class="form-control" min="<%= new Date().toISOString().slice(0, 10) %>" />
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary btn-sm">Conferma Uscita</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Ricerca dinamica istantanea lato client
+    const searchLoanInput = document.getElementById('searchLoanInput');
+    if (searchLoanInput) {
+      searchLoanInput.addEventListener('input', function(e) {
+        const val = e.target.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.loan-row');
+        rows.forEach(r => {
+          const text = r.textContent.toLowerCase();
+          r.style.display = text.includes(val) ? '' : 'none';
+        });
+      });
+    }
+  </script>
+<%- include('partials/footer') %>

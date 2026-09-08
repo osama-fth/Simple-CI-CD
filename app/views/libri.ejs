@@ -1,0 +1,333 @@
+<%- include('partials/head') %>
+<body>
+  <div class="app-shell">
+    <%- include('partials/sidebar') %>
+
+    <main class="app-main-content">
+      <div class="app-content-body">
+        <header class="section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h1 class="section-title">Catalogo Libri</h1>
+            <p class="section-subtitle">Gestione dei titoli a catalogo e inventario delle copie fisiche</p>
+          </div>
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#newBookModal">
+            <i class="bi bi-plus-circle"></i>
+            <span>Nuovo Libro</span>
+          </button>
+        </header>
+
+        <%- include('partials/alerts') %>
+
+        <div class="panel-card">
+          <!-- Barra di Ricerca e Strumenti -->
+          <div class="panel-toolbar d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <form action="/libri" method="GET" class="search-container d-flex">
+              <i class="bi bi-search search-icon"></i>
+              <input
+                type="search"
+                name="q"
+                id="searchBookInput"
+                class="form-control form-control-sm search-input"
+                placeholder="Cerca per titolo, ISBN, genere o editore..."
+                value="<%= searchQuery %>"
+              />
+            </form>
+            <div class="text-muted small">
+              Totale titoli: <strong><%= libri.length %></strong>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-data" id="booksTable">
+              <thead>
+                <tr>
+                  <th>ISBN</th>
+                  <th>Titolo Opera</th>
+                  <th>Genere</th>
+                  <th>Fascia</th>
+                  <th>Editore</th>
+                  <th class="text-center">Copie (Disp / Tot)</th>
+                  <th class="text-end">Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (libri && libri.length) { %>
+                  <% libri.forEach(b => { %>
+                    <tr class="book-row">
+                      <td><code class="mono-code"><%= b.isbn %></code></td>
+                      <td class="fw-medium text-dark"><%= b.titolo %></td>
+                      <td><%= b.nome_genere %></td>
+                      <td><span class="badge bg-light text-dark border"><%= b.categoria_eta %></span></td>
+                      <td><%= b.nome_editore || '—' %></td>
+                      <td class="text-center">
+                        <% if (b.copie_disponibili > 0) { %>
+                          <span class="status-badge available"><%= b.copie_disponibili %> / <%= b.copie_totali %> disp.</span>
+                        <% } else { %>
+                          <span class="status-badge overdue">0 / <%= b.copie_totali %> disp.</span>
+                        <% } %>
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <!-- Aggiungi copia -->
+                          <button
+                            class="btn btn-outline-secondary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#addCopyModal"
+                            data-isbn="<%= b.isbn %>"
+                            data-title="<%= b.titolo %>"
+                            title="Aggiungi copia fisica"
+                            onclick="setupAddCopyModal('<%= b.isbn %>', '<%= b.titolo.replace(/'/g, '\\\'') %>')"
+                          >
+                            <i class="bi bi-plus-square"></i>
+                          </button>
+                          <!-- Modifica libro -->
+                          <button
+                            class="btn btn-outline-secondary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editBookModal"
+                            title="Modifica scheda"
+                            onclick="setupEditBookModal({
+                              isbn: '<%= b.isbn %>',
+                              titolo: '<%= b.titolo.replace(/'/g, '\\\'') %>',
+                              anno: '<%= b.anno_pubblicazione || '' %>',
+                              pagine: '<%= b.numero_pagine || '' %>',
+                              genere: '<%= b.nome_genere %>',
+                              fascia: '<%= b.categoria_eta %>',
+                              editore: '<%= (b.nome_editore || '').replace(/'/g, '\\\'') %>',
+                              descrizione: '<%= (b.descrizione || '').replace(/'/g, '\\\'').replace(/\n/g, ' ') %>'
+                            })"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <!-- Elimina libro -->
+                          <form action="/libri/<%= b.isbn %>/elimina" method="POST" class="d-inline" onsubmit="return confirm('Eliminare il titolo e tutte le copie non prestate?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Elimina titolo">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted small">
+                      <% if (searchQuery) { %>
+                        Nessun titolo corrisponde ai criteri di ricerca "<%= searchQuery %>".
+                      <% } else { %>
+                        Nessun libro censito nel catalogo. Utilizza il pulsante "Nuovo Libro" per inserire la prima opera.
+                      <% } %>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: Nuovo Libro -->
+  <div class="modal fade" id="newBookModal" tabindex="-1" aria-labelledby="newBookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <form action="/libri" method="POST">
+          <div class="modal-header">
+            <h2 class="h6 modal-title fw-semibold" id="newBookModalLabel">Nuova Scheda Libro</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="new_isbn" class="form-label">Codice ISBN (10 o 13 cifre)</label>
+                <input required type="text" name="isbn" id="new_isbn" class="form-control" placeholder="Es. 9788804671234" maxlength="13" />
+              </div>
+              <div class="col-md-6">
+                <label for="new_titolo" class="form-label">Titolo Opera</label>
+                <input required type="text" name="titolo" id="new_titolo" class="form-control" placeholder="Titolo del volume" />
+              </div>
+              <div class="col-md-4">
+                <label for="new_genere" class="form-label">Genere Letterario</label>
+                <select required name="nome_genere" id="new_genere" class="form-select">
+                  <option value="" disabled selected>Seleziona genere</option>
+                  <% lookup.generi.forEach(g => { %>
+                    <option value="<%= g %>"><%= g %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="new_eta" class="form-label">Fascia di Età</label>
+                <select required name="categoria_eta" id="new_eta" class="form-select">
+                  <option value="" disabled selected>Seleziona fascia</option>
+                  <% lookup.categorieEta.forEach(c => { %>
+                    <option value="<%= c %>"><%= c %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="new_editore" class="form-label">Editore</label>
+                <select name="nome_editore" id="new_editore" class="form-select">
+                  <option value="">Nessun editore specifico</option>
+                  <% lookup.editori.forEach(e => { %>
+                    <option value="<%= e %>"><%= e %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="new_anno" class="form-label">Anno Pubblicazione</label>
+                <input type="number" name="anno_pubblicazione" id="new_anno" class="form-control" min="1400" max="<%= new Date().getFullYear() %>" placeholder="AAAA" />
+              </div>
+              <div class="col-md-6">
+                <label for="new_pagine" class="form-label">Numero Pagine</label>
+                <input type="number" name="numero_pagine" id="new_pagine" class="form-control" min="1" placeholder="Pagine" />
+              </div>
+              <div class="col-12">
+                <label for="new_descrizione" class="form-label">Descrizione / Note</label>
+                <textarea name="descrizione" id="new_descrizione" rows="2" class="form-control" placeholder="Breve sinossi o note di catalogazione"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary btn-sm">Salva Scheda</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Aggiungi Copia Fisica -->
+  <div class="modal fade" id="addCopyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="addCopyForm" method="POST">
+          <div class="modal-header">
+            <h2 class="h6 modal-title fw-semibold">Nuova Copia Fisica</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-3" id="addCopyBookTitle"></p>
+            <div class="mb-3">
+              <label for="copy_inventory" class="form-label">Codice Inventario Unico</label>
+              <input required type="text" name="codice_inventario" id="copy_inventory" class="form-control" placeholder="Es. C1016" maxlength="30" />
+              <small class="text-muted extra-small">Identificativo fisico della copia stampato sul volume</small>
+            </div>
+            <div class="mb-3">
+              <label for="copy_status" class="form-label">Stato Iniziale</label>
+              <select name="stato" id="copy_status" class="form-select">
+                <option value="Disponibile">Disponibile</option>
+                <option value="Danneggiata">Danneggiata</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary btn-sm">Registra Copia</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Modifica Libro -->
+  <div class="modal fade" id="editBookModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <form id="editBookForm" method="POST">
+          <div class="modal-header">
+            <h2 class="h6 modal-title fw-semibold">Modifica Scheda Libro</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Codice ISBN</label>
+                <input type="text" id="edit_isbn_display" class="form-control bg-light" disabled />
+              </div>
+              <div class="col-md-6">
+                <label for="edit_titolo" class="form-label">Titolo</label>
+                <input required type="text" name="titolo" id="edit_titolo" class="form-control" />
+              </div>
+              <div class="col-md-4">
+                <label for="edit_genere" class="form-label">Genere</label>
+                <select required name="nome_genere" id="edit_genere" class="form-select">
+                  <% lookup.generi.forEach(g => { %>
+                    <option value="<%= g %>"><%= g %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="edit_eta" class="form-label">Fascia Età</label>
+                <select required name="categoria_eta" id="edit_eta" class="form-select">
+                  <% lookup.categorieEta.forEach(c => { %>
+                    <option value="<%= c %>"><%= c %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="edit_editore" class="form-label">Editore</label>
+                <select name="nome_editore" id="edit_editore" class="form-select">
+                  <option value="">Nessuno</option>
+                  <% lookup.editori.forEach(e => { %>
+                    <option value="<%= e %>"><%= e %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_anno" class="form-label">Anno Pubblicazione</label>
+                <input type="number" name="anno_pubblicazione" id="edit_anno" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label for="edit_pagine" class="form-label">Numero Pagine</label>
+                <input type="number" name="numero_pagine" id="edit_pagine" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label for="edit_descrizione" class="form-label">Descrizione</label>
+                <textarea name="descrizione" id="edit_descrizione" rows="2" class="form-control"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary btn-sm">Salva Modifiche</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setupAddCopyModal(isbn, title) {
+      document.getElementById('addCopyForm').action = '/libri/' + encodeURIComponent(isbn) + '/copie';
+      document.getElementById('addCopyBookTitle').textContent = 'Aggiunta copia per: ' + title;
+      document.getElementById('copy_inventory').value = '';
+    }
+
+    function setupEditBookModal(book) {
+      document.getElementById('editBookForm').action = '/libri/' + encodeURIComponent(book.isbn) + '/modifica';
+      document.getElementById('edit_isbn_display').value = book.isbn;
+      document.getElementById('edit_titolo').value = book.titolo;
+      document.getElementById('edit_anno').value = book.anno;
+      document.getElementById('edit_pagine').value = book.pagine;
+      document.getElementById('edit_genere').value = book.genere;
+      document.getElementById('edit_eta').value = book.fascia;
+      document.getElementById('edit_editore').value = book.editore;
+      document.getElementById('edit_descrizione').value = book.descrizione;
+    }
+
+    // Ricerca istantanea lato client durante la digitazione
+    const searchInput = document.getElementById('searchBookInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', function(e) {
+        const val = e.target.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.book-row');
+        rows.forEach(r => {
+          const text = r.textContent.toLowerCase();
+          r.style.display = text.includes(val) ? '' : 'none';
+        });
+      });
+    }
+  </script>
+<%- include('partials/footer') %>

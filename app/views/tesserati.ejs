@@ -1,0 +1,216 @@
+<%- include('partials/head') %>
+<body>
+  <div class="app-shell">
+    <%- include('partials/sidebar') %>
+
+    <main class="app-main-content">
+      <div class="app-content-body">
+        <header class="section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h1 class="section-title">Anagrafica Tesserati</h1>
+            <p class="section-subtitle">Gestione degli utenti iscritti al prestito bibliotecario</p>
+          </div>
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#newMemberModal">
+            <i class="bi bi-person-plus"></i>
+            <span>Nuovo Tesserato</span>
+          </button>
+        </header>
+
+        <%- include('partials/alerts') %>
+
+        <div class="panel-card">
+          <!-- Barra di Ricerca -->
+          <div class="panel-toolbar d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <form action="/tesserati" method="GET" class="search-container d-flex">
+              <i class="bi bi-search search-icon"></i>
+              <input
+                type="search"
+                name="q"
+                id="searchMemberInput"
+                class="form-control form-control-sm search-input"
+                placeholder="Cerca per cognome, nome, CF o email..."
+                value="<%= searchQuery %>"
+              />
+            </form>
+            <div class="text-muted small">
+              Iscritti: <strong><%= tesserati.length %></strong>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-data" id="membersTable">
+              <thead>
+                <tr>
+                  <th>Codice Fiscale</th>
+                  <th>Nominativo</th>
+                  <th>Data di Nascita</th>
+                  <th>Contatti</th>
+                  <th>Prestiti Attivi</th>
+                  <th>Iscritto dal</th>
+                  <th class="text-end">Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (tesserati && tesserati.length) { %>
+                  <% tesserati.forEach(t => { %>
+                    <tr class="member-row">
+                      <td><code class="mono-code"><%= t.codice_fiscale_mascherato %></code></td>
+                      <td class="fw-medium text-dark"><%= t.cognome %> <%= t.nome %></td>
+                      <td><%= new Date(t.data_nascita).toLocaleDateString('it-IT') %></td>
+                      <td>
+                        <div class="small"><i class="bi bi-envelope me-1 text-muted"></i><%= t.email %></div>
+                        <% if (t.indirizzo) { %>
+                          <div class="extra-small text-muted"><i class="bi bi-geo-alt me-1"></i><%= t.indirizzo %></div>
+                        <% } %>
+                      </td>
+                      <td>
+                        <% if (t.prestiti_in_corso > 0) { %>
+                          <span class="status-badge loaned"><%= t.prestiti_in_corso %> in corso</span>
+                        <% } else { %>
+                          <span class="text-muted small">0 volumi</span>
+                        <% } %>
+                      </td>
+                      <td><%= new Date(t.data_iscrizione).toLocaleDateString('it-IT') %></td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <!-- Modifica contatti -->
+                          <button
+                            class="btn btn-outline-secondary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editMemberModal"
+                            title="Modifica contatti"
+                            onclick="setupEditMemberModal({
+                              cf: '<%= t.codice_fiscale %>',
+                              nomeCompleto: '<%= (t.cognome + ' ' + t.nome).replace(/'/g, '\\\'') %>',
+                              email: '<%= t.email.replace(/'/g, '\\\'') %>',
+                              indirizzo: '<%= (t.indirizzo || '').replace(/'/g, '\\\'') %>'
+                            })"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <!-- Elimina tesserato -->
+                          <form action="/tesserati/<%= t.codice_fiscale %>/elimina" method="POST" class="d-inline" onsubmit="return confirm('Rimuovere definitivamente il tesserato dall\'anagrafica?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Elimina tesserato" <%= t.prestiti_in_corso > 0 ? 'disabled' : '' %>>
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="7" class="text-center py-4 text-muted small">
+                      <% if (searchQuery) { %>
+                        Nessun tesserato corrisponde ai criteri di ricerca "<%= searchQuery %>".
+                      <% } else { %>
+                        Nessun tesserato presente a sistema. Utilizza il pulsante "Nuovo Tesserato" per effettuare la prima registrazione.
+                      <% } %>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: Nuovo Tesserato -->
+  <div class="modal fade" id="newMemberModal" tabindex="-1" aria-labelledby="newMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form action="/tesserati" method="POST">
+          <div class="modal-header">
+            <h2 class="h6 modal-title fw-semibold" id="newMemberModalLabel">Iscrizione Nuovo Tesserato</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="member_cf" class="form-label">Codice Fiscale (16 caratteri)</label>
+              <input required type="text" name="codice_fiscale" id="member_cf" class="form-control font-monospace" placeholder="RSSMRA85M01H501Z" pattern="[A-Za-z0-9]{16}" maxlength="16" />
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label for="member_nome" class="form-label">Nome</label>
+                <input required type="text" name="nome" id="member_nome" class="form-control" placeholder="Mario" />
+              </div>
+              <div class="col-6">
+                <label for="member_cognome" class="form-label">Cognome</label>
+                <input required type="text" name="cognome" id="member_cognome" class="form-control" placeholder="Rossi" />
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="member_birth" class="form-label">Data di Nascita</label>
+              <input required type="date" name="data_nascita" id="member_birth" class="form-control" max="<%= new Date().toISOString().slice(0, 10) %>" />
+            </div>
+            <div class="mb-3">
+              <label for="member_email" class="form-label">Indirizzo Email</label>
+              <input required type="email" name="email" id="member_email" class="form-control" placeholder="mario.rossi@email.it" />
+            </div>
+            <div class="mb-3">
+              <label for="member_address" class="form-label">Indirizzo Residenza</label>
+              <input type="text" name="indirizzo" id="member_address" class="form-control" placeholder="Via, civico, città" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary btn-sm">Iscrivi Tesserato</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Modifica Tesserato -->
+  <div class="modal fade" id="editMemberModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="editMemberForm" method="POST">
+          <div class="modal-header">
+            <h2 class="h6 modal-title fw-semibold">Modifica Recapiti Tesserato</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-3" id="editMemberNameDisplay"></p>
+            <div class="mb-3">
+              <label for="edit_member_email" class="form-label">Email di Contatto</label>
+              <input required type="email" name="email" id="edit_member_email" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label for="edit_member_address" class="form-label">Indirizzo Residenza</label>
+              <input type="text" name="indirizzo" id="edit_member_address" class="form-control" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary btn-sm">Salva Contatti</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setupEditMemberModal(m) {
+      document.getElementById('editMemberForm').action = '/tesserati/' + encodeURIComponent(m.cf) + '/modifica';
+      document.getElementById('editMemberNameDisplay').textContent = m.nomeCompleto + ' (' + m.cf + ')';
+      document.getElementById('edit_member_email').value = m.email;
+      document.getElementById('edit_member_address').value = m.indirizzo;
+    }
+
+    const searchMemberInput = document.getElementById('searchMemberInput');
+    if (searchMemberInput) {
+      searchMemberInput.addEventListener('input', function(e) {
+        const val = e.target.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.member-row');
+        rows.forEach(r => {
+          const text = r.textContent.toLowerCase();
+          r.style.display = text.includes(val) ? '' : 'none';
+        });
+      });
+    }
+  </script>
+<%- include('partials/footer') %>

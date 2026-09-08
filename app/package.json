@@ -11,14 +11,19 @@
     "test:security": "node test/security.test.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dayjs": "^1.11.19",
     "debug": "^4.4.3",
+    "dotenv": "^17.4.2",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-rate-limit": "^8.7.0",
+    "express-session": "^1.19.0",
     "helmet": "^8.3.0",
     "http-errors": "^2.0.0",
     "morgan": "^1.10.1",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {

@@ -21,15 +21,15 @@ async function waitForDb(maxMs = 20000) {
   throw lastErr || new Error('DB non pronto');
 }
 
-// TEST 1: App raggiungibile
+// TEST 1: App raggiungibile (verifica portale di accesso /login o redirect)
 async function testAppRaggiungibile() {
   return new Promise((resolve, reject) => {
     const req = http.request(
-      { hostname: '127.0.0.1', port, path: '/', method: 'GET' },
+      { hostname: '127.0.0.1', port, path: '/login', method: 'GET' },
       (res) => {
         try {
-          assert.strictEqual(res.statusCode, 200, 'Homepage non raggiungibile (non restituisce 200)');
-          console.log('✅ TEST 1: App raggiungibile (status 200)');
+          assert.strictEqual(res.statusCode, 200, 'Pagina di login operatori non raggiungibile (non restituisce 200)');
+          console.log('✅ TEST 1: App raggiungibile su /login (status 200)');
           resolve();
         } catch (err) {
           reject(err);
